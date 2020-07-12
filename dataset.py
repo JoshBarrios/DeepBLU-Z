@@ -5,11 +5,22 @@ Defining training and validation dataloaders.
 
 '''
 # %%
+import numpy as np
+from numpy import genfromtxt
+from pathlib import Path
+import h5py
+from PIL import Image
 
-
+import torch
+from torch.utils.data import Dataset
+from torch.utils.data.sampler import SubsetRandomSampler
+from torchvision import transforms
+import torchvision.transforms.functional as F
 
 # %% Define dataset
 # define normalization function for prepping input to resnet18
+
+
 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225])
 
@@ -44,7 +55,7 @@ class ImagesDS(Dataset):
         image = np.repeat(image[..., np.newaxis], 3, -1)
         image = Image.fromarray(np.uint8(image))
         image = F.to_tensor(image)
-        #image  = image.to(torch.double)
+        # image  = image.to(torch.double)
         image = normalize(image)
 
         # targets are the tracking point locations normalized to W and H of the image
@@ -58,3 +69,29 @@ class ImagesDS(Dataset):
 
     def __len__(self):
         return self.trck_pts.shape[0]
+
+
+# %% Define training and validation loaders
+
+def get_train_val_loader(args):
+    images_ds = ImagesDS(args.data_path)
+
+    # Creating data indices for training and validation splits:
+    dataset_size = len(images_ds)
+    indices = list(range(dataset_size))
+    split = int(np.floor(args.val_split * dataset_size))
+    if args.shuffle:
+        np.random.seed(args.seed)
+        np.random.shuffle(indices)
+    train_indices, val_indices = indices[split:], indices[:split]
+
+    # Creating PT data samplers and loaders:
+    train_sampler = SubsetRandomSampler(train_indices)
+    valid_sampler = SubsetRandomSampler(val_indices)
+
+    train_loader = torch.utils.data.DataLoader(images_ds, batch_size=args.batch_size,
+                                               sampler=train_sampler)
+    validation_loader = torch.utils.data.DataLoader(images_ds, batch_size=args.batch_size,
+                                                    sampler=valid_sampler)
+
+    return train_loader, validation_loader
