@@ -209,8 +209,8 @@ def main(args):
         train(args, model)
 
     elif args.mode == 'predict':
-        model = Model(args).cuda()
-        # model = model.to(device)
+        model = torch.load(args.load)
+        model = model.to(device)
         logging.info(f'Loading model from {args.load}')
         logging.info(f'Model:\n{str(model)}')
         predict(args, model)
