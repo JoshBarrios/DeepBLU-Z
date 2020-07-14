@@ -21,15 +21,15 @@ import torchvision.transforms.functional as F
 # define normalization function for prepping input to resnet18
 
 
-normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
+normalize = transforms.Normalize(mean=[0.456],
+                                 std=[0.224])
 
 
 class ImagesDS(Dataset):
 
-    def __init__(self, root_dir):
+    def __init__(self, args):
         super().__init__()
-        self.root = Path(root_dir)
+        self.root = Path(args.datapath)
 
         # Get images from hdf file
         hdf_path = Path(self.root, 'images_ds.h5')
@@ -39,10 +39,11 @@ class ImagesDS(Dataset):
                 self.images = ds
 
         # Get tracking points from csv
-        trck_pts = genfromtxt(Path(root_dir, 'trck_pts.csv'), delimiter=',')
+        trck_pts = genfromtxt(Path(self.root, 'trck_pts.csv'), delimiter=',')
         trck_pts = np.transpose(trck_pts)
-        trck_pts = trck_pts.reshape(np.int(trck_pts.shape[0] / 8), 8, 2)
+        trck_pts = trck_pts.reshape(np.int(trck_pts.shape[0] / args.num_pts), args.num_pts, 2)
         self.trck_pts = trck_pts
+        self.num_pts = args.num_pts
 
     def __getitem__(self, index):
 
@@ -52,7 +53,7 @@ class ImagesDS(Dataset):
         h = image.shape[0]
         w = image.shape[1]
         # Simulate RGB 3-channel image
-        image = np.repeat(image[..., np.newaxis], 3, -1)
+        #image = np.repeat(image[..., np.newaxis], 3, -1)
         image = Image.fromarray(np.uint8(image))
         image = F.to_tensor(image)
         # image  = image.to(torch.double)
@@ -60,9 +61,9 @@ class ImagesDS(Dataset):
 
         # targets are the tracking point locations normalized to W and H of the image
         targets_ = self.trck_pts[index, :, :]
-        targets = np.double(np.zeros(16))
-        targets[0:8] = targets_[:, 0] / h
-        targets[8:16] = targets_[:, 1] / w
+        targets = np.double(np.zeros(self.num_pts*2))
+        targets[0:self.num_pts] = targets_[:, 0] / h
+        targets[self.num_pts:self.num_pts*2] = targets_[:, 1] / w
         targets = torch.tensor(targets)
 
         return image, targets
@@ -74,7 +75,7 @@ class ImagesDS(Dataset):
 # %% Define training and validation loaders
 
 def get_train_val_loader(args):
-    images_ds = ImagesDS(args.data_path)
+    images_ds = ImagesDS(args)
 
     # Creating data indices for training and validation splits:
     dataset_size = len(images_ds)

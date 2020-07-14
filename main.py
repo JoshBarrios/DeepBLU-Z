@@ -16,11 +16,19 @@ arguments:
 # %%
 from argparse import ArgumentParser
 from pathlib import Path
+import logging
+import sys
+import math
+import numpy as np
+import random
+from pathlib import Path
 
 import torch
+from torch import nn
 from torch.optim import lr_scheduler
 
 import dataset
+from model import Model
 
 # set up GPU if available
 if torch.cuda.is_available():
@@ -30,20 +38,30 @@ else:
     device = torch.device("cpu")
     print("GPU unavailable, running on CPU")
 
-# %%
 
+# %%
 def parse_args():
     parser = ArgumentParser()
     parser.add_argument('--save',
                         help='path for the checkpoint with best accuracy.'
                              'Checkpoint for each epoch will be saved with suffix .<number of epoch>')
-    parser.add_argument('--load',
+    parser.add_argument('--load', type=Path, default=Path('/media/userman/249272E19272B6C0/Documents and Settings/'
+                                                          'jbarr/Documents/Douglass Lab/2020/2p behavior data/'
+                                                          'training_data/resnet18_50epochs.tar'),
                         help='path to the checkpoint which will be loaded for inference or fine-tuning')
-    parser.add_argument('-m', '--mode', default='train', choices=('train', 'val', 'predict'))
-    parser.add_argument('--data_path', type=Path, default=Path('/media/userman/249272E19272B6C0/Documents and Settings/'
+    parser.add_argument('-m', '--mode', default='train', choices=('train', 'predict'))
+    parser.add_argument('--datapath', type=Path, default=Path('/media/userman/249272E19272B6C0/Documents and Settings/'
                                                                'jbarr/Documents/Douglass Lab/2020/2p behavior data/'
                                                                'training_data'),
-                        help='path to the data root.')
+                        help='path to the data root folder for training.')
+    parser.add_argument('-t', '--target', type=Path,
+                        help='Path to target tif for prediction.')
+    parser.add_argument('--backbone', default='resnet18',
+                        help='backbone for the architecture.'
+                             'Supported backbones: ResNets, DenseNets (from torchvision), EfficientNets. '
+                             'For DenseNets, add prefix "mem-" for memory efficient version')
+    parser.add_argument('--num_pts', type=int, default=8,
+                        help='Number of tracking points in training data.')
     parser.add_argument('-b', '--batch_size', type=int, default=16)
     parser.add_argument('--val_split', type=float, default=0.2)
     parser.add_argument('-e', '--epochs', type=int, default=50)
@@ -63,25 +81,50 @@ def parse_args():
 
     if args.mode == 'train':
         assert args.save is not None
-    if args.mode == 'val':
-        assert args.save is None
     if args.mode == 'predict':
-        assert args.load is not None
         assert args.save is None
+        assert args.target is not None
+
+    if args.seed is None:
+        args.seed = random.randint(0, 10 ** 9)
 
     return args
 
 
 # %%
+def setup_logging(args):
+    head = '{asctime}:{levelname}: {message}'
+    handlers = [logging.StreamHandler(sys.stderr)]
+    if args.mode == 'train':
+        handlers.append(logging.FileHandler(args.save + '.log', mode='w'))
+    if args.mode == 'predict':
+        handlers.append(logging.FileHandler(args.load + '.output.log', mode='w'))
+    logging.basicConfig(level=logging.DEBUG, format=head, style='{', handlers=handlers)
+    logging.info('Start with arguments {}'.format(args))
 
+
+# %%
+def setup_determinism(args):
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    random.seed(args.seed)
+
+
+# %%
 def train(args, model):
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=args.lr_decay_step, gamma=args.lr_decay)
     criterion = nn.MSELoss()
 
     train_loader, validation_loader = dataset.get_train_val_loader(args)
+    train_iterations = math.ceil(len(train_loader) / 4)
+    val_iterations = math.ceil(len(validation_loader) / 4)
 
     for epoch in range(args.epochs):
+        current_lr = optimizer.param_groups[0]['lr']
+        logging.info(f'Train: epoch {epoch}   learning rate: {current_lr}')
 
         model.train()
         optimizer.zero_grad()
@@ -100,11 +143,10 @@ def train(args, model):
 
             # Update on training progress every 5th iteration
             if (i + 1) % 5 == 0:
-                print(
-                    f'epoch {epoch + 1}/{args.epochs}, step {i + 1}/{n_iterations},  loss {loss}')
+                logging.info(f'epoch {epoch + 1}/{args.epochs}, step {i + 1}/{train_iterations},  loss {loss}')
 
         # Validation set
-        for i, (images, targets) in enumerate(val_loader):
+        for i, (images, targets) in enumerate(validation_loader):
             model.eval()
             images = images.to(device)
             targets = targets.to(device)
@@ -114,25 +156,41 @@ def train(args, model):
             loss = criterion(output, targets)
 
             # Update on validation loss
-            print(
-                f'===== VALIDATION epoch {epoch + 1}/{args.epochs}, step {i + 1}/{n_iterations},'
-                'validation loss {loss} =====')
+            logging.info(f'===== VALIDATION epoch {epoch + 1}/{args.epochs}, step {i + 1}/{val_iterations},'
+                         f'validation loss {loss} =====')
 
         exp_lr_scheduler.step()
 
 
 # %%
+
 def main(args):
-    model = ModelAndLoss(args).cuda()
-    logging.info('Model:\n{}'.format(str(model)))
-
-    if args.load is not None:
-        logging.info('Loading model from {}'.format(args.load))
-        model.load_state_dict(torch.load(str(args.load)))
-
-    if args.mode in ['train', 'val']:
+    if args.mode == 'train':
+        model = Model(args).cuda()
+        # from torchvision import models
+        # model = models.resnet18(pretrained=False)
+        # num_ftrs = model.fc.in_features
+        # model.conv1 = nn.Conv2d(1, 64, 7, 2, 3, bias=False)
+        # # Create a fully connected linear layer, size 512 at the end of the resnet before the final trckpts layer.
+        # model.fc = nn.Linear(num_ftrs, 16)
+        # model = model.to(device)
+        logging.info('Building new model for training')
+        logging.info(f'Model:\n{str(model)}')
         train(args, model)
+
     elif args.mode == 'predict':
+        model = torch.load(args.load)
+        logging.info(f'Loading model from {args.load}')
+        logging.info(f'Model:\n{str(model)}')
         predict(args, model)
+
     else:
         assert 0
+
+
+# %%
+if __name__ == '__main__':
+    args = parse_args()
+    setup_logging(args)
+    setup_determinism(args)
+    main(args)
