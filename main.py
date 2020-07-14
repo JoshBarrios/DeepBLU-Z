@@ -22,10 +22,12 @@ import math
 import numpy as np
 import random
 from pathlib import Path
+from PIL import Image
 
 import torch
 from torch import nn
 from torch.optim import lr_scheduler
+from torchvision import transforms
 
 import dataset
 from model import Model
@@ -45,16 +47,16 @@ def parse_args():
     parser.add_argument('--save',
                         help='path for the checkpoint with best accuracy.'
                              'Checkpoint for each epoch will be saved with suffix .<number of epoch>')
-    parser.add_argument('--load', type=Path, default=Path('/media/userman/249272E19272B6C0/Documents and Settings/'
+    parser.add_argument('--load', type=str, default='/media/userman/249272E19272B6C0/Documents and Settings/'
                                                           'jbarr/Documents/Douglass Lab/2020/2p behavior data/'
-                                                          'training_data/resnet18_50epochs.tar'),
+                                                          'training_data/resnet18_50epochs.tar',
                         help='path to the checkpoint which will be loaded for inference or fine-tuning')
     parser.add_argument('-m', '--mode', default='train', choices=('train', 'predict'))
     parser.add_argument('--datapath', type=Path, default=Path('/media/userman/249272E19272B6C0/Documents and Settings/'
                                                                'jbarr/Documents/Douglass Lab/2020/2p behavior data/'
                                                                'training_data'),
                         help='path to the data root folder for training.')
-    parser.add_argument('-t', '--target', type=Path,
+    parser.add_argument('-t', '--target', default='/media/userman/249272E19272B6C0/Documents and Settings/jbarr/Documents/Douglass Lab/2020/2p behavior data/test data/image8.tif',
                         help='Path to target tif for prediction.')
     parser.add_argument('--backbone', default='resnet18',
                         help='backbone for the architecture.'
@@ -162,24 +164,53 @@ def train(args, model):
         exp_lr_scheduler.step()
 
 
+#%%
+def predict(args, model):
+    target_path = args.target
+    im = Image.open(target_path)
+    h = np.array(im).shape[0]
+    w = np.array(im).shape[1]
+    normalize = transforms.Compose([transforms.ToTensor(),
+                                    transforms.Normalize(mean=[0.456],
+                                     std=[0.224])])
+    im = normalize(im)
+    im = im.to(device)
+    im = torch.unsqueeze(im, 0)
+    model.eval()
+    output = model(im)
+
+    output = output.cpu()
+    output = output.detach().numpy()
+    output = np.squeeze(output)
+    trck_pts = np.zeros([2, 8])
+    trck_pts[0, :] = output[0:8] * h
+    trck_pts[1, :] = output[8:16] * w
+    trck_pts[trck_pts < 0] = 0
+    trck_pts = np.round(trck_pts)
+    trck_pts = np.transpose(trck_pts)
+
+    # Mark tracking points in image
+    image_marked = Image.open(target_path)
+    image_marked = np.array(image_marked)
+    for pt in trck_pts:
+        pt = np.uint8(pt)
+        image_marked[pt[0] - 4:pt[0] + 4, pt[1] - 4:pt[1] + 4] = 255
+    im = Image.fromarray(image_marked)
+    im.show()
+
+
 # %%
 
 def main(args):
     if args.mode == 'train':
         model = Model(args).cuda()
-        # from torchvision import models
-        # model = models.resnet18(pretrained=False)
-        # num_ftrs = model.fc.in_features
-        # model.conv1 = nn.Conv2d(1, 64, 7, 2, 3, bias=False)
-        # # Create a fully connected linear layer, size 512 at the end of the resnet before the final trckpts layer.
-        # model.fc = nn.Linear(num_ftrs, 16)
-        # model = model.to(device)
         logging.info('Building new model for training')
         logging.info(f'Model:\n{str(model)}')
         train(args, model)
 
     elif args.mode == 'predict':
-        model = torch.load(args.load)
+        model = Model(args).cuda()
+        # model = model.to(device)
         logging.info(f'Loading model from {args.load}')
         logging.info(f'Model:\n{str(model)}')
         predict(args, model)
