@@ -1,5 +1,7 @@
-# DeepZHEBrA
-Deep learning for pose estimation of head embedded larval zebrafish
+# Deep Behavior Learning Utility for Zebrafish (DeepBLU-Z)
+Deep learning for pose estimation of behaving larval zebrafish
+
+Created in Python 3.6
 
 Run "pip install -r requirements.txt" to get started
 

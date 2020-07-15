@@ -4,10 +4,8 @@ Defining model
 
 '''
 # %%
-import torch
 import torchvision
 from torch import nn
-from torch.nn import functional as F
 
 
 # %%
@@ -30,8 +28,9 @@ class Model(nn.Module):
         elif backbone.startswith('efficientnet'):
             from efficientnet_pytorch import EfficientNet
             self.features = EfficientNet.from_name(backbone)
-            self.features._conv_stem = nn.Conv2d(1, self.features._conv_stem.out_channels, kernel_size=3, stride=2, padding=1,
-                                   bias=False)
+            self.features._conv_stem = nn.Conv2d(1, self.features._conv_stem.out_channels, kernel_size=3, stride=2,
+                                                 padding=1,
+                                                 bias=False)
             num_features = self.features._conv_head.out_channels
             self.features._fc = nn.Linear(num_features, (args.num_pts * 2), bias=False)
             self.features.set_swish(memory_efficient=True)

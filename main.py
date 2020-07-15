@@ -1,5 +1,6 @@
 """
 Josh Barrios 7/9/2020
+Deep Behavior Learning Utility for Zebrafish (DeepBLU-Z)
 Runs training, validation or prediction
 
 arguments:

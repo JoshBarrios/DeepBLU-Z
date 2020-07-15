@@ -20,10 +20,8 @@ import torchvision.transforms.functional as F
 # %% Define dataset
 # define normalization function for prepping input to resnet18
 
-
 normalize = transforms.Normalize(mean=[0.456],
                                  std=[0.224])
-
 
 class ImagesDS(Dataset):
 
