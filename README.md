@@ -3,7 +3,7 @@ Deep learning for pose estimation of behaving larval zebrafish
 
 Created in Python 3.6
 
-Run "pip install -r requirements.txt" to get started
+Run "pip3 install -r requirements.txt" to get started
 
 To train a new model, try "python3 main.py -m train --save 'PATH_TO_SAVE_MODEL_HERE'
 
