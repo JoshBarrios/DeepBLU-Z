@@ -132,6 +132,8 @@ def train(args, model):
     train_iterations = math.ceil(len(train_loader) / 4)
     val_iterations = math.ceil(len(validation_loader) / 4)
 
+    best_loss = 1
+
     for epoch in range(args.epochs):
         current_lr = optimizer.param_groups[0]['lr']
         logging.info(f'Train: epoch {epoch}   learning rate: {current_lr}')
@@ -156,6 +158,7 @@ def train(args, model):
                 logging.info(f'epoch {epoch + 1}/{args.epochs}, step {i + 1}/{train_iterations},  loss {loss}')
 
         # Validation set
+        loss_log = np.zeros(len(validation_loader))
         for i, (images, targets) in enumerate(validation_loader):
             model.eval()
             images = images.to(device)
@@ -164,10 +167,16 @@ def train(args, model):
             output = model(images)
 
             loss = criterion(output, targets)
+            loss_log[i] = loss
 
             # Update on validation loss
             logging.info(f'===== VALIDATION epoch {epoch + 1}/{args.epochs}, step {i + 1}/{val_iterations},'
                          f'validation loss {loss} =====')
+
+        if np.mean(loss_log) < best_loss:
+            best_loss = np.mean(loss_log)
+            logging.info(f'Saving best to {args.save} with score {best_acc}')
+            torch.save(model.state_dict(), str(args.save + args.backbone))
 
         exp_lr_scheduler.step()
 
@@ -215,6 +224,7 @@ def main(args):
         logging.info('Building new model for training')
         logging.info(f'Model:\n{str(model)}')
         train(args, model)
+        torch.save(model, Path(args.save, model.pt))
 
     elif args.mode == 'predict':
         model = torch.load(args.load)
