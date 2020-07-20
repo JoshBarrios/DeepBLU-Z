@@ -9,6 +9,12 @@ To train a new model, try "python3 main.py -m train --save 'PATH_TO_SAVE_MODEL_H
 
 To run a prediction, try python3 main.py -m predict -t 'PATH_TO_TIF_HERE'
 
+Run "pip install -r requirements.txt" to get started
+
+To train a new model, try "python3 main.py -m train --save '/media/userman/249272E19272B6C0/Documents and Settings/jbarr/Documents/Douglass Lab/2020/2p behavior data/training_data'"
+
+To run a prediction, try python3 main.py -m predict -t PATH_TO_TIF_HERE
+
 arguments:
 
 --save, path for the checkpoint with best accuracy.

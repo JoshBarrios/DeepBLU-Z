@@ -56,15 +56,16 @@ def parse_args():
                         help='path for the checkpoint with best accuracy.'
                              'Checkpoint for each epoch will be saved with suffix .<number of epoch>')
     parser.add_argument('--load', type=str, default='/media/userman/249272E19272B6C0/Documents and Settings/'
-                                                          'jbarr/Documents/Douglass Lab/2020/2p behavior data/'
-                                                          'training_data/resnet18_50epochs.tar',
+                                                    'jbarr/Documents/Douglass Lab/2020/2p behavior data/'
+                                                    'training_data/resnet18_50epochs.tar',
                         help='path to the checkpoint which will be loaded for inference or fine-tuning')
     parser.add_argument('-m', '--mode', default='train', choices=('train', 'predict'))
     parser.add_argument('--datapath', type=Path, default=Path('/media/userman/249272E19272B6C0/Documents and Settings/'
-                                                               'jbarr/Documents/Douglass Lab/2020/2p behavior data/'
-                                                               'training_data'),
+                                                              'jbarr/Documents/Douglass Lab/2020/2p behavior data/'
+                                                              'training_data'),
                         help='path to the data root folder for training.')
-    parser.add_argument('-t', '--target', default='/media/userman/249272E19272B6C0/Documents and Settings/jbarr/Documents/Douglass Lab/2020/2p behavior data/test data/image8.tif',
+    parser.add_argument('-t', '--target',
+                        default='/media/userman/249272E19272B6C0/Documents and Settings/jbarr/Documents/Douglass Lab/2020/2p behavior data/test data/image8.tif',
                         help='Path to target tif for prediction.')
     parser.add_argument('--backbone', default='resnet18',
                         help='backbone for the architecture.'
@@ -129,8 +130,8 @@ def train(args, model):
     criterion = nn.MSELoss()
 
     train_loader, validation_loader = dataset.get_train_val_loader(args)
-    train_iterations = math.ceil(len(train_loader) / 4)
-    val_iterations = math.ceil(len(validation_loader) / 4)
+    train_iterations = len(train_loader)
+    val_iterations = len(validation_loader)
 
     best_loss = 1
 
@@ -158,7 +159,9 @@ def train(args, model):
                 logging.info(f'epoch {epoch + 1}/{args.epochs}, step {i + 1}/{train_iterations},  loss {loss}')
 
         # Validation set
+
         loss_log = np.zeros(len(validation_loader))
+
         for i, (images, targets) in enumerate(validation_loader):
             model.eval()
             images = images.to(device)
@@ -167,6 +170,7 @@ def train(args, model):
             output = model(images)
 
             loss = criterion(output, targets)
+
             loss_log[i] = loss
 
             # Update on validation loss
@@ -181,7 +185,7 @@ def train(args, model):
         exp_lr_scheduler.step()
 
 
-#%%
+# %%
 def predict(args, model):
     target_path = args.target
     im = Image.open(target_path)
@@ -189,7 +193,7 @@ def predict(args, model):
     w = np.array(im).shape[1]
     normalize = transforms.Compose([transforms.ToTensor(),
                                     transforms.Normalize(mean=[0.456],
-                                     std=[0.224])])
+                                                         std=[0.224])])
     im = normalize(im)
     im = im.to(device)
     im = torch.unsqueeze(im, 0)
@@ -224,6 +228,7 @@ def main(args):
         logging.info('Building new model for training')
         logging.info(f'Model:\n{str(model)}')
         train(args, model)
+
         torch.save(model, Path(args.save, model.pt))
 
     elif args.mode == 'predict':
