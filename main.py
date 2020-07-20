@@ -179,7 +179,7 @@ def train(args, model):
 
         if np.mean(loss_log) < best_loss:
             best_loss = np.mean(loss_log)
-            logging.info(f'Saving best to {args.save} with score {best_acc}')
+            logging.info(f'Saving best to {args.save} with loss {best_loss}')
             torch.save(model.state_dict(), str(args.save + args.backbone))
 
         exp_lr_scheduler.step()
