@@ -180,7 +180,7 @@ def train(args, model):
         if np.mean(loss_log) < best_loss:
             best_loss = np.mean(loss_log)
             logging.info(f'Saving best to {args.save} with loss {best_loss}')
-            torch.save(model.state_dict(), str(args.save + args.backbone))
+            torch.save(model.state_dict(), str(args.save + '/' + args.backbone))
 
         exp_lr_scheduler.step()
 
@@ -229,7 +229,7 @@ def main(args):
         logging.info(f'Model:\n{str(model)}')
         train(args, model)
 
-        torch.save(model, Path(args.save, model.pt))
+        torch.save(model, Path(args.save, 'model'))
 
     elif args.mode == 'predict':
         model = torch.load(args.load)
