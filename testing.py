@@ -149,8 +149,6 @@ def transform_input(im, pts, angle, new_height, new_width):
 
 # %%
 for i, (images, targets) in enumerate(train_loader):
-    images = images.to(device)
-    targets = targets.to(device)
     # Choose random rotation angle and scaling for this batch
     angle = random.choice(range(360))
     scale = random.choice(np.linspace(0.2, 5, 49))
