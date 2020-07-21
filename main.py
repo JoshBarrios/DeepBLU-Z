@@ -27,6 +27,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 import logging
 import sys
+import time
 import math
 import numpy as np
 import random
@@ -85,6 +86,8 @@ def parse_args():
                         help='Learning rate decay amount')
     parser.add_argument('--lr_decay_step', type=int, default=5,
                         help='Number of epochs between lr decay')
+    parser.add_argument('--transform', type=bool, default=False,
+                        help='rotate and resize input of each batch for training')
     parser.add_argument('--shuffle', type=bool, default=True,
                         help='Shuffle dataset before train/val split')
 
@@ -123,6 +126,62 @@ def setup_determinism(args):
     random.seed(args.seed)
 
 
+# %% set up transformation functions
+
+# define transform as class to allow identical transform on multiple images
+class RotateAndScale:
+    def __init__(self, angle, new_height, new_width):
+        self.angle = angle
+        self.new_height = new_height
+        self.new_width = new_width
+
+    def __call__(self, x):
+        angle = self.angle
+        x = transforms.functional.rotate(x, angle, expand=True)
+        y = transforms.functional.resize(x, [self.new_height, self.new_width])
+        return y
+
+
+def transform_input(im, pts, angle, new_height, new_width):
+    h = im.shape[1]
+    w = im.shape[2]
+    num_pts = np.int(pts.shape[0] / 2)
+
+    # # Choose random rotation angle and scaling for this batch
+    # angle = random.choice(range(360))
+    # scale = random.choice(np.linspace(0.2, 5, 49))
+    # [new_height, new_width] = [np.int(np.round(h * scale)), np.int(np.round(w * scale))]
+    warp_input = RotateAndScale(angle, new_height, new_width)
+
+    transform_im = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Lambda(warp_input),
+        transforms.ToTensor()
+    ])
+    # for the point image, we don't need to convert to PIL
+    transform_ptim = transforms.Compose([
+        transforms.Lambda(warp_input),
+    ])
+
+    # Get transformed point locations by creating an image of each point and performing the same transformation on it
+    new_pts = np.zeros([16], dtype=int)
+    for k in range(num_pts):
+        pt_im = np.zeros([h, w], dtype='bool')
+        pt_loc = [np.int(np.round(pts[k] * h)), np.int(np.round(pts[k + 8] * w))]
+        # Single points often disappear when transformed, so we make a 4x4 point
+        pt_im[np.int(pt_loc[0]) - 6:np.int(pt_loc[0]) + 6, np.int(pt_loc[1]) - 6:np.int(pt_loc[1]) + 6] = 1
+        pt_im = Image.fromarray(pt_im)
+        pt_im = transform_ptim(pt_im)
+        pt_im = np.array(pt_im)
+        pt = np.where(pt_im == 1)
+        pt_inds = [np.int(np.round(np.mean(pt[0]))), np.int(np.round(np.mean(pt[1])))]
+        new_pts[k] = pt_inds[0]
+        new_pts[k + 8] = pt_inds[1]
+    new_pts = torch.DoubleTensor(new_pts).unsqueeze(dim=0)
+
+    new_im = transform_im(im).unsqueeze(dim=0)
+    return new_im, new_pts
+
 # %%
 def train(args, model):
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -144,6 +203,22 @@ def train(args, model):
 
         # Train set
         for i, (images, targets) in enumerate(train_loader):
+            # rotate and resize batch if requested
+            if args.transform:
+                # Choose random rotation angle and scaling for this batch
+                angle = random.choice(range(360))
+                scale = random.choice(np.linspace(0.2, 5, 49))
+                [new_height, new_width] = [np.int(np.round(images.size()[2] * scale)),
+                                           np.int(np.round(images.size()[3] * scale))]
+                new_ims, new_targets = transform_input(images[0], targets[0], angle, new_height, new_width)
+                for l in range(len(images)):
+                    new_im, new_target = transform_input(images[l], targets[l], angle, new_height, new_width)
+                    new_ims = torch.cat((new_ims, new_im), dim=0)
+                    new_targets = torch.cat((new_targets, new_target), dim=0)
+
+                images = new_ims
+                targets = new_targets
+
             images = images.to(device)
             targets = targets.to(device)
 
@@ -163,6 +238,22 @@ def train(args, model):
         loss_log = np.zeros(len(validation_loader))
 
         for i, (images, targets) in enumerate(validation_loader):
+            # rotate and resize if requested
+            if args.transform:
+                # Choose random rotation angle and scaling for this batch
+                angle = random.choice(range(360))
+                scale = random.choice(np.linspace(0.2, 5, 49))
+                [new_height, new_width] = [np.int(np.round(images.size()[2] * scale)),
+                                           np.int(np.round(images.size()[3] * scale))]
+                new_ims, new_targets = transform_input(images[0], targets[0], angle, new_height, new_width)
+                for l in range(len(images)):
+                    new_im, new_target = transform_input(images[l], targets[l], angle, new_height, new_width)
+                    new_ims = torch.cat((new_ims, new_im), dim=0)
+                    new_targets = torch.cat((new_targets, new_target), dim=0)
+
+                images = new_ims
+                targets = new_targets
+
             model.eval()
             images = images.to(device)
             targets = targets.to(device)
@@ -198,7 +289,9 @@ def predict(args, model):
     im = im.to(device)
     im = torch.unsqueeze(im, 0)
     model.eval()
+    t = time.time()
     output = model(im)
+    print(f'==== Prediction finished in {time.time() - t}s ====')
 
     output = output.cpu()
     output = output.detach().numpy()
@@ -232,7 +325,8 @@ def main(args):
         torch.save(model, Path(args.save, 'model'))
 
     elif args.mode == 'predict':
-        model = torch.load(args.load)
+        model = Model(args)
+        model.load_state_dict(torch.load(args.load))
         model = model.to(device)
         logging.info(f'Loading model from {args.load}')
         logging.info(f'Model:\n{str(model)}')
