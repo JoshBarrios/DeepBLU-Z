@@ -244,7 +244,7 @@ def train(args, model):
             if args.transform:
                 # Choose random rotation angle and scaling for this batch
                 angle = random.choice(range(360))
-                scale = random.choice(np.linspace(0.2, 5, 49))
+                scale = random.choice(np.linspace(0.2, 2, 49))
                 [new_height, new_width] = [np.int(np.round(images.size()[2] * scale)),
                                            np.int(np.round(images.size()[3] * scale))]
                 new_ims, new_targets = transform_input(images[0], targets[0], angle, new_height, new_width)
@@ -253,8 +253,9 @@ def train(args, model):
                     new_ims = torch.cat((new_ims, new_im), dim=0)
                     new_targets = torch.cat((new_targets, new_target), dim=0)
 
-                images = new_ims
-                targets = new_targets
+                images = copy.deepcopy(new_ims)
+                targets = copy.deepcopy(new_targets)
+                del (new_ims, new_targets)
 
             model.eval()
             images = images.to(device)
