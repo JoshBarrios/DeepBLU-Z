@@ -158,3 +158,4 @@ for i, (images, targets) in enumerate(train_loader):
         new_im, new_target = transform_input(images[l], targets[l], angle, new_height, new_width)
         new_ims = torch.cat((new_ims, new_im), dim=0)
         new_targets = torch.cat((new_targets, new_target), dim=0)
+

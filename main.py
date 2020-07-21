@@ -31,6 +31,7 @@ import time
 import math
 import numpy as np
 import random
+import copy
 from PIL import Image
 
 import torch
@@ -204,20 +205,21 @@ def train(args, model):
         # Train set
         for i, (images, targets) in enumerate(train_loader):
             # rotate and resize batch if requested
-            # if args.transform:
-            #     # Choose random rotation angle and scaling for this batch
-            #     angle = random.choice(range(360))
-            #     scale = random.choice(np.linspace(0.2, 5, 49))
-            #     [new_height, new_width] = [np.int(np.round(images.size()[2] * scale)),
-            #                                np.int(np.round(images.size()[3] * scale))]
-            #     new_ims, new_targets = transform_input(images[0], targets[0], angle, new_height, new_width)
-            #     for l in range(len(images)):
-            #         new_im, new_target = transform_input(images[l], targets[l], angle, new_height, new_width)
-            #         new_ims = torch.cat((new_ims, new_im), dim=0)
-            #         new_targets = torch.cat((new_targets, new_target), dim=0)
-            #
-            #     images = new_ims
-            #     targets = new_targets
+            if args.transform:
+                # Choose random rotation angle and scaling for this batch
+                angle = random.choice(range(360))
+                scale = random.choice(np.linspace(0.2, 5, 49))
+                [new_height, new_width] = [np.int(np.round(images.size()[2] * scale)),
+                                           np.int(np.round(images.size()[3] * scale))]
+                new_ims, new_targets = transform_input(images[0], targets[0], angle, new_height, new_width)
+                for l in range(len(images)):
+                    new_im, new_target = transform_input(images[l], targets[l], angle, new_height, new_width)
+                    new_ims = torch.cat((new_ims, new_im), dim=0)
+                    new_targets = torch.cat((new_targets, new_target), dim=0)
+
+                images = copy.deepcopy(new_ims)
+                targets = copy.deepcopy(new_targets)
+                del(new_ims, new_targets)
 
             images = images.to(device)
             targets = targets.to(device)
