@@ -57,7 +57,7 @@ def parse_args():
     parser.add_argument('--save',
                         help='path for the checkpoint with best accuracy.'
                              'Checkpoint for each epoch will be saved with suffix .<number of epoch>')
-    parser.add_argument('--load', type=str, default='./models/082020/resnet18',
+    parser.add_argument('-l', '--load', type=str, default='./models/082020/resnet18',
                         help='path to the checkpoint which will be loaded for inference or fine-tuning')
     parser.add_argument('-m', '--mode', default='train', choices=('train', 'predict'))
     parser.add_argument('--retrain', type=bool, default=False,

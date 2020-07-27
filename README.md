@@ -5,16 +5,11 @@ Created in Python 3.6 with Pytorch
 
 Run "pip3 install -r requirements.txt" to get started
 
-To train a new model, try "python3 main.py -m train --save 'PATH_TO_SAVE_MODEL_HERE'
+To train a new model, try "python3 main.py -m train --save 'PATH_TO_SAVE_MODEL' --datapath 'PATH_TO_DATA_DIR'"
 
-To run a prediction, try python3 main.py -m predict -t 'PATH_TO_TIF_HERE'
+Training expects an hdf5 database of images and a csv of tracking points (x,y coordinates) in the data directory.
 
-Run "pip install -r requirements.txt" to get started
-
-To train a new model, try "python3 main.py -m train --save 'PATH_TO_DATA_DIR_HERE'"
-Training expects and hdf5 database of images and a csv of tracking points in the data directory.
-
-To run a prediction, try python3 main.py -m predict -t PATH_TO_TIF_HERE
+To run a prediction, try python3 main.py -m predict -t 'PATH_TO_TIF' -l 'PATH_TO_TRAINED_MODEL'
 
 arguments:
 
