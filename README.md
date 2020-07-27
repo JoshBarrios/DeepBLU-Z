@@ -11,7 +11,8 @@ To run a prediction, try python3 main.py -m predict -t 'PATH_TO_TIF_HERE'
 
 Run "pip install -r requirements.txt" to get started
 
-To train a new model, try "python3 main.py -m train --save '/media/userman/249272E19272B6C0/Documents and Settings/jbarr/Documents/Douglass Lab/2020/2p behavior data/training_data'"
+To train a new model, try "python3 main.py -m train --save 'PATH_TO_DATA_DIR_HERE'"
+Training expects and hdf5 database of images and a csv of tracking points in the data directory.
 
 To run a prediction, try python3 main.py -m predict -t PATH_TO_TIF_HERE
 

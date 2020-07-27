@@ -57,17 +57,15 @@ def parse_args():
     parser.add_argument('--save',
                         help='path for the checkpoint with best accuracy.'
                              'Checkpoint for each epoch will be saved with suffix .<number of epoch>')
-    parser.add_argument('--load', type=str, default='/media/userman/249272E19272B6C0/Documents and Settings/'
-                                                    'jbarr/Documents/Douglass Lab/2020/2p behavior data/'
-                                                    'training_data/resnet18_50epochs.tar',
+    parser.add_argument('--load', type=str, default='./models/082020/resnet18',
                         help='path to the checkpoint which will be loaded for inference or fine-tuning')
     parser.add_argument('-m', '--mode', default='train', choices=('train', 'predict'))
-    parser.add_argument('--datapath', type=Path, default=Path('/media/userman/249272E19272B6C0/Documents and Settings/'
-                                                              'jbarr/Documents/Douglass Lab/2020/2p behavior data/'
-                                                              'training_data'),
+    parser.add_argument('--retrain', type=bool, default=False,
+                        help='load old model to continue training')
+    parser.add_argument('--datapath', type=Path, default=Path('./data/training data'),
                         help='path to the data root folder for training.')
     parser.add_argument('-t', '--target',
-                        default='/media/userman/249272E19272B6C0/Documents and Settings/jbarr/Documents/Douglass Lab/2020/2p behavior data/test data/image8.tif',
+                        default='./data/test data/image8.tif',
                         help='Path to target tif for prediction.')
     parser.add_argument('--backbone', default='resnet18',
                         help='backbone for the architecture.'
@@ -321,7 +319,11 @@ def predict(args, model):
 def main(args):
     if args.mode == 'train':
         model = Model(args).cuda()
-        logging.info('Building new model for training')
+        if args.retrain:
+            model.load_state_dict(torch.load(args.load))
+            logging.info(f'Loading model for training from {args.load}')
+        else:
+            logging.info('Building new model for training')
         logging.info(f'Model:\n{str(model)}')
         train(args, model)
 

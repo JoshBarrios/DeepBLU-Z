@@ -191,6 +191,7 @@ class Model(nn.Module):
         return self.features(x)
 
 model = Model()
+device = torch.device('cuda:0')
 model.to(device)
 # %%
 import copy
@@ -207,11 +208,10 @@ for i, (images, targets) in enumerate(train_loader):
         new_ims = torch.cat((new_ims, new_im), dim=0)
         new_targets = torch.cat((new_targets, new_target), dim=0)
 
-    images = copy.deepcopy(new_ims)
-    targets = copy.deepcopy(new_targets)
-    del(new_ims, new_targets)
-
-    images = images.to(device)
-    targets = targets.to(device)
-
-    output = model(images).to(torch.double)
+    # images = copy.deepcopy(new_ims)
+    # targets = copy.deepcopy(new_targets)
+    #
+    # images = images.to(device)
+    # targets = targets.to(device)
+    #
+    # output = model(images).to(torch.double)
