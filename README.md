@@ -11,7 +11,7 @@ Training expects an hdf5 database of images and a csv of tracking points (x,y co
 
 To run a prediction, try python3 main.py -m predict -t 'PATH_TO_TIF' -l 'PATH_TO_TRAINED_MODEL'
 
-arguments:
+## arguments:
 
 --save, path for the checkpoint with best accuracy.
 
