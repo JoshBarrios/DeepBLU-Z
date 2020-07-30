@@ -62,10 +62,10 @@ def parse_args():
     parser.add_argument('-m', '--mode', default='train', choices=('train', 'predict'))
     parser.add_argument('--retrain', type=bool, default=False,
                         help='load old model to continue training')
-    parser.add_argument('--datapath', type=Path, default=Path('./data/training data'),
+    parser.add_argument('--datapath', type=Path, default=Path('./data/training_data'),
                         help='path to the data root folder for training.')
     parser.add_argument('-t', '--target',
-                        default='./data/test data/image8.tif',
+                        default='./data/test_data/image8.tif',
                         help='Path to target tif for prediction.')
     parser.add_argument('--backbone', default='resnet18',
                         help='backbone for the architecture.'
@@ -181,6 +181,7 @@ def transform_input(im, pts, angle, new_height, new_width):
     new_im = transform_im(im).unsqueeze(dim=0)
     return new_im, new_pts
 
+
 # %%
 def train(args, model):
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -217,7 +218,7 @@ def train(args, model):
 
                 images = copy.deepcopy(new_ims)
                 targets = copy.deepcopy(new_targets)
-                del(new_ims, new_targets)
+                del (new_ims, new_targets)
 
             images = images.to(device)
             targets = targets.to(device)
@@ -283,12 +284,25 @@ def predict(args, model):
     im = Image.open(target_path)
     h = np.array(im).shape[0]
     w = np.array(im).shape[1]
-    normalize = transforms.Compose([transforms.ToTensor(),
-                                    transforms.Normalize(mean=[0.456],
-                                                         std=[0.224])])
-    im = normalize(im)
+
+    # if the model expects 3 channel image, we need to convert to "RGB"
+    if model.conv1.in_channels == 3:
+        im = im.convert('RGB')
+        normalize = transforms.Compose([transforms.ToTensor(),
+                                        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                             std=[0.229, 0.224, 0.225])])
+        im = normalize(im)
+    else:
+        normalize = transforms.Compose([transforms.ToTensor(),
+                                        transforms.Normalize(mean=[0.456],
+                                                            std=[0.224])])
+        im = normalize(im)
+
     im = im.to(device)
     im = torch.unsqueeze(im, 0)
+
+    # if the model expects 3-channel input, convert to 3-channel
+
     model.eval()
     t = time.time()
     output = model(im)
@@ -313,6 +327,10 @@ def predict(args, model):
     im = Image.fromarray(image_marked)
     im.show()
 
+    im_path = args.target[0:-4]
+    im_path = im_path + '_tracked.tif'
+    im.save(im_path)
+
 
 # %%
 
@@ -330,8 +348,13 @@ def main(args):
         torch.save(model, Path(args.save, 'model'))
 
     elif args.mode == 'predict':
-        model = Model(args)
-        model.load_state_dict(torch.load(args.load))
+        # some models are saved in their entirety as a tar, others have only the state dict saved
+        if '.tar' not in args.load:
+            model = Model(args)
+            model.load_state_dict(torch.load(args.load))
+        else:
+            model = torch.load(args.load)
+
         model = model.to(device)
         logging.info(f'Loading model from {args.load}')
         logging.info(f'Model:\n{str(model)}')
