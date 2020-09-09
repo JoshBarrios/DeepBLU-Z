@@ -20,8 +20,8 @@ import torchvision.transforms.functional as F
 # %% Define dataset
 # define normalization function for prepping input to resnet18
 
-normalize = transforms.Normalize(mean=[0.456],
-                                 std=[0.224])
+normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
 
 class ImagesDS(Dataset):
 
@@ -51,7 +51,7 @@ class ImagesDS(Dataset):
         h = image.shape[0]
         w = image.shape[1]
         # Simulate RGB 3-channel image
-        #image = np.repeat(image[..., np.newaxis], 3, -1)
+        image = np.repeat(image[..., np.newaxis], 3, -1)
         image = Image.fromarray(np.uint8(image))
         image = F.to_tensor(image)
         # image  = image.to(torch.double)
