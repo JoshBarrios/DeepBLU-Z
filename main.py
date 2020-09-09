@@ -6,7 +6,8 @@ Runs training, validation or prediction
 arguments:
 --save, path for the checkpoint with best accuracy.
 --load, path to the checkpoint which will be loaded for inference or fine-tuning.
--m or --mode, 'train' 'val' or 'predict'
+-m or --mode, 'train' or 'predict'
+--retrain, boolean, select to load model for further training
 --data_path, path to the data root.
 -t or --target, path to target image for prediction
 --backbone, type of model to use for new model. Accepts all resnets, efficientnets and densenets.
@@ -286,7 +287,7 @@ def predict(args, model):
     w = np.array(im).shape[1]
 
     # if the model expects 3 channel image, we need to convert to "RGB"
-    if model.conv1.in_channels == 3:
+    if model.features.conv1.in_channels == 3:
         im = im.convert('RGB')
         normalize = transforms.Compose([transforms.ToTensor(),
                                         transforms.Normalize(mean=[0.485, 0.456, 0.406],
