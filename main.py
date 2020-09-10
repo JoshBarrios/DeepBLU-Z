@@ -189,6 +189,9 @@ def train(args, model):
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=args.lr_decay_step, gamma=args.lr_decay)
     criterion = nn.MSELoss()
 
+    if args.retrain:
+        optimizer.load_state_dict(torch.load(args.load + '_optimizer'))
+
     train_loader, validation_loader = dataset.get_train_val_loader(args)
     train_iterations = len(train_loader)
     val_iterations = len(validation_loader)
@@ -275,6 +278,7 @@ def train(args, model):
             best_loss = np.mean(loss_log)
             logging.info(f'Saving best to {args.save} with loss {best_loss}')
             torch.save(model.state_dict(), str(args.save + '/' + args.backbone))
+            torch.save(optimizer.state_dict(), str(args.save + '/' + args.backbone + '_optimizer'))
 
         exp_lr_scheduler.step()
 
@@ -296,7 +300,7 @@ def predict(args, model):
     else:
         normalize = transforms.Compose([transforms.ToTensor(),
                                         transforms.Normalize(mean=[0.456],
-                                                            std=[0.224])])
+                                                             std=[0.224])])
         im = normalize(im)
 
     im = im.to(device)
@@ -323,7 +327,7 @@ def predict(args, model):
     image_marked = Image.open(target_path)
     image_marked = np.array(image_marked)
     for pt in trck_pts:
-        pt = np.uint8(pt)
+        pt = np.uint16(pt)
         image_marked[pt[0] - 4:pt[0] + 4, pt[1] - 4:pt[1] + 4] = 255
     im = Image.fromarray(image_marked)
     im.show()
