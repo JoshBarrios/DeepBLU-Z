@@ -29,11 +29,11 @@ from pathlib import Path
 import logging
 import sys
 import time
-import math
 import numpy as np
 import random
 import copy
-from PIL import Image
+from PIL import Image, ImageSequence
+import imageio
 
 import torch
 from torch import nn
@@ -285,56 +285,61 @@ def train(args, model):
 
 # %%
 def predict(args, model):
-    target_path = args.target
-    im = Image.open(target_path)
+
+    im = Image.open(args.target)
+
     h = np.array(im).shape[0]
     w = np.array(im).shape[1]
 
-    # if the model expects 3 channel image, we need to convert to "RGB"
-    if model.features.conv1.in_channels == 3:
-        im = im.convert('RGB')
-        normalize = transforms.Compose([transforms.ToTensor(),
-                                        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                             std=[0.229, 0.224, 0.225])])
-        im = normalize(im)
-    else:
-        normalize = transforms.Compose([transforms.ToTensor(),
-                                        transforms.Normalize(mean=[0.456],
-                                                             std=[0.224])])
-        im = normalize(im)
-
-    im = im.to(device)
-    im = torch.unsqueeze(im, 0)
-
-    # if the model expects 3-channel input, convert to 3-channel
+    # Initialize marked image array
+    image_marked = np.zeros([im.n_frames, h, w], 'uint8')
 
     model.eval()
+    # Loop over all frames, run prediction, mark frames, write result into image_marked
+    index = 0
     t = time.time()
-    output = model(im)
-    print(f'==== Prediction finished in {time.time() - t}s ====')
+    for frame in ImageSequence.Iterator(im):
+        frame_marked = np.array(frame)
+        # if the model expects 3 channel image, we need to convert to "RGB"
+        if model.features.conv1.in_channels == 3:
+            frame = frame.convert('RGB')
+            normalize = transforms.Compose([transforms.ToTensor(),
+                                            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                                 std=[0.229, 0.224, 0.225])])
+            frame = normalize(frame)
+        else:
+            normalize = transforms.Compose([transforms.ToTensor(),
+                                            transforms.Normalize(mean=[0.456],
+                                                                 std=[0.224])])
+            frame = normalize(frame)
 
-    output = output.cpu()
-    output = output.detach().numpy()
-    output = np.squeeze(output)
-    trck_pts = np.zeros([2, 8])
-    trck_pts[0, :] = output[0:8] * h
-    trck_pts[1, :] = output[8:16] * w
-    trck_pts[trck_pts < 0] = 0
-    trck_pts = np.round(trck_pts)
-    trck_pts = np.transpose(trck_pts)
+        frame = frame.to(device)
+        frame = torch.unsqueeze(frame, 0)
 
-    # Mark tracking points in image
-    image_marked = Image.open(target_path)
-    image_marked = np.array(image_marked)
-    for pt in trck_pts:
-        pt = np.uint16(pt)
-        image_marked[pt[0] - 4:pt[0] + 4, pt[1] - 4:pt[1] + 4] = 255
-    im = Image.fromarray(image_marked)
-    im.show()
+        output = model(frame)
 
-    im_path = args.target[0:-4]
+        # Convert length 16 tensor into 8x2 numpy tracking points
+        output = output.cpu()
+        output = output.detach().numpy()
+        output = np.squeeze(output)
+        trck_pts = np.zeros([2, 8])
+        trck_pts[0, :] = output[0:8] * h
+        trck_pts[1, :] = output[8:16] * w
+        trck_pts[trck_pts < 0] = 0
+        trck_pts = np.round(trck_pts)
+        trck_pts = np.transpose(trck_pts)
+
+        # Mark tracking points in image
+        for pt in trck_pts:
+            pt = np.uint16(pt)
+            frame_marked[pt[0] - 4:pt[0] + 4, pt[1] - 4:pt[1] + 4] = 255
+        image_marked[index, :, :] = frame_marked
+        index = index + 1
+
+    print(f'==== Predictions finished in {time.time() - t}s ====')
+    im_path = args.target[0:-5]
     im_path = im_path + '_tracked.tif'
-    im.save(im_path)
+    imageio.mimwrite(im_path, image_marked)
 
 
 # %%
@@ -363,6 +368,8 @@ def main(args):
         model = model.to(device)
         logging.info(f'Loading model from {args.load}')
         logging.info(f'Model:\n{str(model)}')
+
+
         predict(args, model)
 
     else:
