@@ -89,4 +89,16 @@ im = Image.fromarray(image_marked)
 im.show()
 
 #%%
-print(output[0:7])
+# Import database of images
+import h5py
+hdf_path = './data/training_data_v2/images_ds.h5'
+# hdf_path = '/home/userman/Documents/aws/danionella_training_data/images_ds.h5'
+hdf_file = h5py.File(hdf_path, 'r')
+for gname, group in hdf_file.items():
+    for dname, ds in group.items():
+        images = ds
+
+im_num =
+#%%
+test = '../data/test_data/temp_tracked.tif'
+test.split('.tif')[-2]

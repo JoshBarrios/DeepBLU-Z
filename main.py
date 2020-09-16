@@ -191,6 +191,9 @@ def train(args, model):
 
     if args.retrain:
         optimizer.load_state_dict(torch.load(args.load + '_optimizer'))
+        # reset lr to initial learning rate
+        for g in optimizer.param_groups:
+            g['lr'] = args.lr
 
     train_loader, validation_loader = dataset.get_train_val_loader(args)
     train_iterations = len(train_loader)
@@ -337,7 +340,7 @@ def predict(args, model):
         index = index + 1
 
     print(f'==== Predictions finished in {time.time() - t}s ====')
-    im_path = args.target[0:-5]
+    im_path = args.target.split('.tif')[-2]
     im_path = im_path + '_tracked.tif'
     imageio.mimwrite(im_path, image_marked)
 
