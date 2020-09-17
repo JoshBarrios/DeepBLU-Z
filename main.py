@@ -80,10 +80,10 @@ def parse_args():
     parser.add_argument('--seed', type=int,
                         help='global seed (for weight initialization, data sampling, etc.). '
                              'If not specified it will be randomized (and printed on the log)')
-    parser.add_argument('--lr', type=float, default=0.01,
+    parser.add_argument('--lr', type=float, default=0.05,
                         help='Learning rate decay amount')
-    parser.add_argument('--lr_decay', type=float, default=0.001,
-                        help='Learning rate decay amount')
+    parser.add_argument('--lr_decay', type=float, default=0.75,
+                        help='Learning rate decay amount (multiplicative)')
     parser.add_argument('--lr_decay_step', type=int, default=5,
                         help='Number of epochs between lr decay')
     parser.add_argument('--transform', type=bool, default=False,
@@ -149,7 +149,7 @@ def transform_input(im, pts, angle, new_height, new_width):
 
     # # Choose random rotation angle and scaling for this batch
     # angle = random.choice(range(360))
-    # scale = random.choice(np.linspace(0.2, 5, 49))
+    # scale = random.choice(np.linspace(0.5, 2, 4))
     # [new_height, new_width] = [np.int(np.round(h * scale)), np.int(np.round(w * scale))]
     warp_input = RotateAndScale(angle, new_height, new_width)
 
