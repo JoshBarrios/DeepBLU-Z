@@ -90,6 +90,8 @@ def parse_args():
                         help='rotate and resize input of each batch for training')
     parser.add_argument('--shuffle', type=bool, default=True,
                         help='Shuffle dataset before train/val split')
+    parser.add_argument('--pretrained', type=bool, default=False,
+                        help='Use pretrained backbone')
 
     args = parser.parse_args()
 

@@ -21,7 +21,7 @@ class Model(nn.Module):
         # Implement backbones and change input and output sizes to meet our needs
         if backbone.startswith('resnet') or backbone.startswith('resnext'):
             first_conv = nn.Conv2d(3, 64, 7, 2, 3, bias=False)
-            self.features = getattr(torchvision.models, backbone)(pretrained=False)
+            self.features = getattr(torchvision.models, backbone)(pretrained=args.pretrained)
             self.features.conv1 = first_conv
             self.features.fc = nn.Linear(self.features.fc.in_features, (args.num_pts * 2))
 
@@ -38,7 +38,7 @@ class Model(nn.Module):
         elif backbone.startswith('densenet'):
             channels = 96 if backbone == 'densenet161' else 64
             first_conv = nn.Conv2d(3, channels, 7, 2, 3, bias=False)
-            self.features = getattr(torchvision.models, backbone)(pretrained=False)
+            self.features = getattr(torchvision.models, backbone)(pretrained=args.pretrained)
             self.features.features.conv0 = first_conv
             num_features = self.features.classifier.in_features
             self.features.classifier = nn.Linear(num_features, (args.num_pts * 2), bias=True)
