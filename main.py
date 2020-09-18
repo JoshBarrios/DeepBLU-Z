@@ -201,7 +201,7 @@ def train(args, model):
     train_iterations = len(train_loader)
     val_iterations = len(validation_loader)
 
-    best_loss = 1
+    best_loss = 10000
 
     for epoch in range(args.epochs):
         current_lr = optimizer.param_groups[0]['lr']
