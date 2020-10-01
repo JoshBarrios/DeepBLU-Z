@@ -216,7 +216,9 @@ def train(args, model):
             if args.transform:
                 # Choose random rotation angle and scaling for this batch
                 angle = random.choice(range(360))
-                scale = random.choice(np.linspace(0.2, 2, 49))
+                # scale = random.choice(np.linspace(0.2, 2, 49))
+                # test scale of 1
+                scale = 1
                 [new_height, new_width] = [np.int(np.round(images.size()[2] * scale)),
                                            np.int(np.round(images.size()[3] * scale))]
                 new_ims, new_targets = transform_input(images[0], targets[0], angle, new_height, new_width)
@@ -368,7 +370,10 @@ def main(args):
             model = Model(args)
             model.load_state_dict(torch.load(args.load))
         else:
-            model = torch.load(args.load)
+            if torch.cuda.is_available():
+                model = torch.load(args.load)
+            else:
+                model = torch.load(args.load, map_location=torch.device('cpu'))
 
         model = model.to(device)
         logging.info(f'Loading model from {args.load}')
