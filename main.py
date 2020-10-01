@@ -368,7 +368,10 @@ def main(args):
         # some models are saved in their entirety as a tar, others have only the state dict saved
         if '.tar' not in args.load:
             model = Model(args)
-            model.load_state_dict(torch.load(args.load))
+            if torch.cuda.is_available():
+                model.load_state_dict(torch.load(args.load))
+            else:
+                model.load_state_dict(torch.load(args.load, map_location=torch.device('cpu')))
         else:
             if torch.cuda.is_available():
                 model = torch.load(args.load)
