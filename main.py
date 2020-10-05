@@ -177,8 +177,8 @@ def transform_input(im, pts, angle, new_height, new_width):
         pt_im = np.array(pt_im)
         pt = np.where(pt_im == 1)
         pt_inds = [np.int(np.round(np.mean(pt[0]))), np.int(np.round(np.mean(pt[1])))]
-        new_pts[k] = pt_inds[0]
-        new_pts[k + 8] = pt_inds[1]
+        new_pts[k] = pt_inds[0] / new_height
+        new_pts[k + 8] = pt_inds[1] / new_width
     new_pts = torch.DoubleTensor(new_pts).unsqueeze(dim=0)
 
     new_im = transform_im(im).unsqueeze(dim=0)
@@ -216,16 +216,25 @@ def train(args, model):
             if args.transform:
                 # Choose random rotation angle and scaling for this batch
                 angle = random.choice(range(360))
-                # scale = random.choice(np.linspace(0.2, 2, 49))
-                # test scale of 1
-                scale = 1
+                scale = random.choice(np.linspace(0.2, 2, 49))
+
                 [new_height, new_width] = [np.int(np.round(images.size()[2] * scale)),
                                            np.int(np.round(images.size()[3] * scale))]
-                new_ims, new_targets = transform_input(images[0], targets[0], angle, new_height, new_width)
-                for l in range(len(images)):
-                    new_im, new_target = transform_input(images[l], targets[l], angle, new_height, new_width)
-                    new_ims = torch.cat((new_ims, new_im), dim=0)
-                    new_targets = torch.cat((new_targets, new_target), dim=0)
+                # Get transformed images and targets
+                for image_ind in range(len(images)):
+                    if image_ind == 0:
+                        new_ims, new_targets = transform_input(images[0],
+                                                               targets[0],
+                                                               angle,
+                                                               new_height,
+                                                               new_width)
+                    else:
+                        new_im, new_target = transform_input(images[image_ind],
+                                                             targets[image_ind],
+                                                             angle, new_height,
+                                                             new_width)
+                        new_ims = torch.cat((new_ims, new_im), dim=0)
+                        new_targets = torch.cat((new_targets, new_target), dim=0)
 
                 images = copy.deepcopy(new_ims)
                 targets = copy.deepcopy(new_targets)
@@ -257,11 +266,21 @@ def train(args, model):
                 scale = random.choice(np.linspace(0.2, 2, 49))
                 [new_height, new_width] = [np.int(np.round(images.size()[2] * scale)),
                                            np.int(np.round(images.size()[3] * scale))]
-                new_ims, new_targets = transform_input(images[0], targets[0], angle, new_height, new_width)
-                for l in range(len(images)):
-                    new_im, new_target = transform_input(images[l], targets[l], angle, new_height, new_width)
-                    new_ims = torch.cat((new_ims, new_im), dim=0)
-                    new_targets = torch.cat((new_targets, new_target), dim=0)
+                # Get transformed images and targets
+                for image_ind in range(len(images)):
+                    if image_ind == 0:
+                        new_ims, new_targets = transform_input(images[0],
+                                                               targets[0],
+                                                               angle,
+                                                               new_height,
+                                                               new_width)
+                    else:
+                        new_im, new_target = transform_input(images[image_ind],
+                                                             targets[image_ind],
+                                                             angle, new_height,
+                                                             new_width)
+                        new_ims = torch.cat((new_ims, new_im), dim=0)
+                        new_targets = torch.cat((new_targets, new_target), dim=0)
 
                 images = copy.deepcopy(new_ims)
                 targets = copy.deepcopy(new_targets)
