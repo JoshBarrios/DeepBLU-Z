@@ -115,7 +115,7 @@ def setup_logging(args):
         handlers.append(logging.FileHandler(args.save + '.log', mode='w'))
     if args.mode == 'predict':
         handlers.append(logging.FileHandler(args.load + '.output.log', mode='w'))
-    logging.basicConfig(level=logging.DEBUG, format=head, style='{', handlers=handlers)
+    logging.basicConfig(level=logging.INFO, format=head, style='{', handlers=handlers)
     logging.info('Start with arguments {}'.format(args))
 
 
@@ -166,7 +166,7 @@ def transform_input(im, pts, angle, new_height, new_width):
     ])
 
     # Get transformed point locations by creating an image of each point and performing the same transformation on it
-    new_pts = np.zeros([16], dtype=int)
+    new_pts = np.zeros([16], dtype='f8')
     for k in range(num_pts):
         pt_im = np.zeros([h, w], dtype='bool')
         pt_loc = [np.int(np.round(pts[k] * h)), np.int(np.round(pts[k + 8] * w))]
@@ -180,7 +180,6 @@ def transform_input(im, pts, angle, new_height, new_width):
         new_pts[k] = pt_inds[0] / new_height
         new_pts[k + 8] = pt_inds[1] / new_width
     new_pts = torch.DoubleTensor(new_pts).unsqueeze(dim=0)
-
     new_im = transform_im(im).unsqueeze(dim=0)
     return new_im, new_pts
 
@@ -213,6 +212,7 @@ def train(args, model):
         # Train set
         for i, (images, targets) in enumerate(train_loader):
             # rotate and resize batch if requested
+
             if args.transform:
                 # Choose random rotation angle and scaling for this batch
                 angle = random.choice(range(360))
@@ -231,11 +231,11 @@ def train(args, model):
                     else:
                         new_im, new_target = transform_input(images[image_ind],
                                                              targets[image_ind],
-                                                             angle, new_height,
+                                                             angle,
+                                                             new_height,
                                                              new_width)
                         new_ims = torch.cat((new_ims, new_im), dim=0)
                         new_targets = torch.cat((new_targets, new_target), dim=0)
-
                 images = copy.deepcopy(new_ims)
                 targets = copy.deepcopy(new_targets)
                 del (new_ims, new_targets)
@@ -246,6 +246,7 @@ def train(args, model):
             output = model(images).to(torch.double)
 
             loss = criterion(output, targets)
+
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
@@ -343,11 +344,12 @@ def predict(args, model):
         frame = torch.unsqueeze(frame, 0)
 
         output = model(frame)
-
+        print(output)
         # Convert length 16 tensor into 8x2 numpy tracking points
         output = output.cpu()
         output = output.detach().numpy()
         output = np.squeeze(output)
+
         trck_pts = np.zeros([2, 8])
         trck_pts[0, :] = output[0:8] * h
         trck_pts[1, :] = output[8:16] * w
