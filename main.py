@@ -149,10 +149,6 @@ def transform_input(im, pts, angle, new_height, new_width):
     w = im.shape[2]
     num_pts = np.int(pts.shape[0] / 2)
 
-    # # Choose random rotation angle and scaling for this batch
-    # angle = random.choice(range(360))
-    # scale = random.choice(np.linspace(0.5, 2, 4))
-    # [new_height, new_width] = [np.int(np.round(h * scale)), np.int(np.round(w * scale))]
     warp_input = RotateAndScale(angle, new_height, new_width)
 
     transform_im = transforms.Compose([
@@ -217,10 +213,8 @@ def train(args, model):
 
             if args.transform:
                 # Choose random rotation angle and scaling for this batch
-                # angle = random.choice(range(360))
-                angle = 0
-                # scale = random.choice(np.linspace(0.2, 2, 49))
-                scale = 1
+                angle = random.choice(range(360))
+                scale = random.choice(np.linspace(0.2, 2, 49))
 
                 [new_height, new_width] = [np.int(np.round(images.size()[2] * scale)),
                                            np.int(np.round(images.size()[3] * scale))]
@@ -280,6 +274,7 @@ def train(args, model):
                 # Choose random rotation angle and scaling for this batch
                 angle = random.choice(range(360))
                 scale = random.choice(np.linspace(0.2, 2, 49))
+
                 [new_height, new_width] = [np.int(np.round(images.size()[2] * scale)),
                                            np.int(np.round(images.size()[3] * scale))]
                 # Get transformed images and targets
