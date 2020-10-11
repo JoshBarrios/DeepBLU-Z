@@ -34,6 +34,7 @@ import random
 import copy
 from PIL import Image, ImageSequence
 import imageio
+import matplotlib.pyplot as plt
 
 import torch
 from torch import nn
@@ -158,7 +159,9 @@ def transform_input(im, pts, angle, new_height, new_width):
     transform_im = transforms.Compose([
         transforms.ToPILImage(),
         transforms.Lambda(warp_input),
-        transforms.ToTensor()
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
     ])
     # for the point image, we don't need to convert to PIL
     transform_ptim = transforms.Compose([
@@ -215,8 +218,10 @@ def train(args, model):
 
             if args.transform:
                 # Choose random rotation angle and scaling for this batch
-                angle = random.choice(range(360))
-                scale = random.choice(np.linspace(0.2, 2, 49))
+                # angle = random.choice(range(360))
+                angle = 0
+                # scale = random.choice(np.linspace(0.2, 2, 49))
+                scale = 1
 
                 [new_height, new_width] = [np.int(np.round(images.size()[2] * scale)),
                                            np.int(np.round(images.size()[3] * scale))]
@@ -239,6 +244,23 @@ def train(args, model):
                 images = copy.deepcopy(new_ims)
                 targets = copy.deepcopy(new_targets)
                 del (new_ims, new_targets)
+
+            testim = images[0, 0, :, :].detach().numpy()
+            testtargs = targets[0, :].detach().numpy()
+
+            trck_pts = np.zeros([2, 8])
+            trck_pts[0, :] = testtargs[0:8] * testim.shape[0]
+            trck_pts[1, :] = testtargs[8:16] * testim.shape[1]
+            trck_pts = np.transpose(trck_pts)
+            for ind in range(trck_pts.shape[0]):
+                pt = trck_pts[ind, :]
+                testim[np.int(pt[0]) - 4:np.int(pt[0]) + 4, np.int(pt[1]) - 4:np.int(pt[1]) + 4] = 1
+
+            plt.imshow(testim)
+            plt.savefig(args.save + 'test.png', dpi=300, quality=100, format='png')
+
+            print(images.type())
+            print(targets.type())
 
             images = images.to(device)
             targets = targets.to(device)
@@ -312,7 +334,6 @@ def train(args, model):
 
 # %%
 def predict(args, model):
-
     im = Image.open(args.target)
 
     h = np.array(im).shape[0]
@@ -402,7 +423,6 @@ def main(args):
         model = model.to(device)
         logging.info(f'Loading model from {args.load}')
         logging.info(f'Model:\n{str(model)}')
-
 
         predict(args, model)
 

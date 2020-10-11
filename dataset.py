@@ -42,6 +42,7 @@ class ImagesDS(Dataset):
         trck_pts = trck_pts.reshape(np.int(trck_pts.shape[0] / args.num_pts), args.num_pts, 2)
         self.trck_pts = trck_pts
         self.num_pts = args.num_pts
+        self.transform = args.transform
 
     def __getitem__(self, index):
 
@@ -54,8 +55,9 @@ class ImagesDS(Dataset):
         image = np.repeat(image[..., np.newaxis], 3, -1)
         image = Image.fromarray(np.uint8(image))
         image = F.to_tensor(image)
-        # image  = image.to(torch.double)
-        image = normalize(image)
+        # if doing transformation, save normalization for after PIL conversion to avoid bit depth issues
+        if not self.transform:
+            image = normalize(image)
 
         # targets are the tracking point locations normalized to W and H of the image
         targets_ = self.trck_pts[index, :, :]
