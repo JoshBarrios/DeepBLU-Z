@@ -259,9 +259,6 @@ def train(args, model):
             plt.imshow(testim)
             plt.savefig(args.save + 'test.png', dpi=300, quality=100, format='png')
 
-            print(images.type())
-            print(targets.type())
-
             images = images.to(device)
             targets = targets.to(device)
 
