@@ -34,7 +34,6 @@ import random
 import copy
 from PIL import Image, ImageSequence
 import imageio
-import matplotlib.pyplot as plt
 
 import torch
 from torch import nn
@@ -255,9 +254,6 @@ def train(args, model):
             for ind in range(trck_pts.shape[0]):
                 pt = trck_pts[ind, :]
                 testim[np.int(pt[0]) - 4:np.int(pt[0]) + 4, np.int(pt[1]) - 4:np.int(pt[1]) + 4] = 1
-
-            plt.imshow(testim)
-            plt.savefig(args.save + 'test.png', dpi=300, quality=100, format='png')
 
             images = images.to(device)
             targets = targets.to(device)
