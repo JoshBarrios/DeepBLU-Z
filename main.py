@@ -34,6 +34,7 @@ import random
 import copy
 from PIL import Image, ImageSequence
 import imageio
+# import matplotlib.pyplot as plt
 
 import torch
 from torch import nn
@@ -238,16 +239,20 @@ def train(args, model):
                 targets = copy.deepcopy(new_targets)
                 del (new_ims, new_targets)
 
-            testim = images[0, 0, :, :].detach().numpy()
-            testtargs = targets[0, :].detach().numpy()
-
-            trck_pts = np.zeros([2, 8])
-            trck_pts[0, :] = testtargs[0:8] * testim.shape[0]
-            trck_pts[1, :] = testtargs[8:16] * testim.shape[1]
-            trck_pts = np.transpose(trck_pts)
-            for ind in range(trck_pts.shape[0]):
-                pt = trck_pts[ind, :]
-                testim[np.int(pt[0]) - 4:np.int(pt[0]) + 4, np.int(pt[1]) - 4:np.int(pt[1]) + 4] = 1
+            # For debugging - check transformed images and targets
+            # testim = images[0, 0, :, :].detach().numpy()
+            # testtargs = targets[0, :].detach().numpy()
+            #
+            # trck_pts = np.zeros([2, 8])
+            # trck_pts[0, :] = testtargs[0:8] * testim.shape[0]
+            # trck_pts[1, :] = testtargs[8:16] * testim.shape[1]
+            # trck_pts = np.transpose(trck_pts)
+            # for ind in range(trck_pts.shape[0]):
+            #     pt = trck_pts[ind, :]
+            #     testim[np.int(pt[0]) - 4:np.int(pt[0]) + 4, np.int(pt[1]) - 4:np.int(pt[1]) + 4] = 1
+            #
+            # plt.imshow(testim)
+            # plt.savefig(args.save + 'test.png', dpi=300, quality=100, format='png')
 
             images = images.to(device)
             targets = targets.to(device)
